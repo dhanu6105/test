@@ -1,0 +1,16 @@
+{
+	"name": "Db21",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "Db2",
+		"typeProperties": {
+			"connectionString": "server=vmwindow;database=sample;authenticationtype=Basic;username=db2admin",
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiIwZjhjMmUzNi0wMDMzLTQ4OTctYWFiMi1hZGFhNjgxMzc2NmUiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+		},
+		"connectVia": {
+			"referenceName": "integrationRuntime1",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

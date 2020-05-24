@@ -1,0 +1,16 @@
+{
+	"name": "advWorks",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "SqlServer",
+		"typeProperties": {
+			"connectionString": "integrated security=False;data source=vmwindow;initial catalog=AdventureWorksDW2017;user id=mp",
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiIyM2ZkMjU1Yy03Zjg2LTQwODAtYjI2ZC1hMmNmYjYwMjljM2EiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+		},
+		"connectVia": {
+			"referenceName": "integrationRuntime1",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

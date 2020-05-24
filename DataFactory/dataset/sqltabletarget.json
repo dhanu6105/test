@@ -1,0 +1,34 @@
+{
+	"name": "sqltabletarget",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "advWorks",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"tablename": {
+				"type": "string"
+			},
+			"tableschema": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Test"
+		},
+		"annotations": [],
+		"type": "SqlServerTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": {
+				"value": "@dataset().tableschema",
+				"type": "Expression"
+			},
+			"table": {
+				"value": "@dataset().tablename",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

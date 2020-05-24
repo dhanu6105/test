@@ -1,0 +1,328 @@
+{
+	"name": "IncrementalCopyPipeline_copy1",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupOldWaterMarkActivity",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlSource",
+						"sqlReaderQuery": "select * from watermarktable"
+					},
+					"dataset": {
+						"referenceName": "WatermarkDataset",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "LookupNewWaterMarkActivity",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlSource",
+						"sqlReaderQuery": "select MAX(LastModifytime) as NewWatermarkvalue from data_source_table"
+					},
+					"dataset": {
+						"referenceName": "SourceDataSet",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "IncrementalCopyActivity",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "LookupNewWaterMarkActivity",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "LookupOldWaterMarkActivity",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlSource",
+						"sqlReaderQuery": {
+							"value": "select * from data_source_table where LastModifytime > '@{activity('LookupOldWaterMarkActivity').output.firstRow.WatermarkValue}' and LastModifytime <= '@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}'",
+							"type": "Expression"
+						}
+					},
+					"sink": {
+						"type": "BlobSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SourceDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SinkDataset",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "StoredProceduretoWriteWatermarkActivity",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "IncrementalCopyActivity",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "usp_write_watermark",
+					"storedProcedureParameters": {
+						"LastModifiedtime": {
+							"value": {
+								"value": "@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}",
+								"type": "Expression"
+							},
+							"type": "datetime"
+						},
+						"TableName": {
+							"value": {
+								"value": "@{activity('LookupOldWaterMarkActivity').output.firstRow.TableName}",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Logging variable",
+				"type": "AppendVariable",
+				"dependsOn": [
+					{
+						"activity": "IncrementalCopyActivity",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "var_logging",
+					"value": {
+						"value": "@concat('IncrementalCopyActivity|Copy|',pipeline().DataFactory,'|',activity('IncrementalCopyActivity').Duration,'|',activity('IncrementalCopyActivity').Error,'|',activity('IncrementalCopyActivity').ExecutionDetails,'|',activity('IncrementalCopyActivity').ExecutionEndTime,'|',activity('IncrementalCopyActivity').ExecutionStartTime,'|',activity('IncrementalCopyActivity').JobId,'|',activity('IncrementalCopyActivity').Output,'|',pipeline().Pipeline,'|',activity('IncrementalCopyActivity').ActivityRunId,'|',activity('IncrementalCopyActivity').Status,'|',activity('IncrementalCopyActivity').StatusCode, '|',activity('IncrementalCopyActivity').output.rowsread)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Logging variable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('var_logging')",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Stored procedure1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[usp_log_table_b]",
+								"storedProcedureParameters": {
+									"ActivityTask": {
+										"value": {
+											"value": "@split(item(),'|')[0]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ActivityType": {
+										"value": {
+											"value": "@split(item(),'|')[1]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"DataFactory": {
+										"value": {
+											"value": "@split(item(),'|')[2]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Duration": {
+										"value": {
+											"value": "@split(item(),'|')[3]",
+											"type": "Expression"
+										},
+										"type": "Timespan"
+									},
+									"Error": {
+										"value": {
+											"value": "@split(item(),'|')[4]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ExecutionDetails": {
+										"value": {
+											"value": "@split(item(),'|')[5]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ExecutionEndTime": {
+										"value": {
+											"value": "@split(item(),'|')[6]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ExecutionStartTime": {
+										"value": {
+											"value": "@split(item(),'|')[7]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"JobId": {
+										"value": {
+											"value": "@split(item(),'|')[8]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Output": {
+										"value": {
+											"value": "@split(item(),'|')[9]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Pipeline": {
+										"value": {
+											"value": "@split(item(),'|')[10]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"RunId": {
+										"value": {
+											"value": "@split(item(),'|')[11]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Status": {
+										"value": {
+											"value": "@split(item(),'|')[12]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"StatusCode": {
+										"value": {
+											"value": "@split(item(),'|')[13]",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"rowsread": {
+										"value": {
+											"value": "@split(item(),'|')[14]",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "SqlServer1",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"var_logging": {
+				"type": "Array"
+			},
+			"var_file_list": {
+				"type": "Array"
+			}
+		},
+		"folder": {
+			"name": "Test"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
